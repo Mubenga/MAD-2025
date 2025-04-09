@@ -1,0 +1,33 @@
+{
+  "name": "mad-2025",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mubenga/MAD-2025.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Mubenga/MAD-2025/issues"
+  },
+  "homepage": "https://github.com/Mubenga/MAD-2025#readme",
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  },
+  "dependencies": {
+    "@types/axios": "^0.9.36",
+    "axios": "^1.8.4",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express-validator": "^7.2.1",
+    "validator": "^13.12.0"
+  }
+}
