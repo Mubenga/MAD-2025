@@ -2,35 +2,37 @@ const express = require("express");
 const router = express.Router();
 const Course = require("../models/Course");
 const { body, validationResult } = require("express-validator");
-const auth = require("../middleware/auth");
+const { authMiddleware, authorizeRoles } = require("../middleware/auth");
 
 // @route   POST /api/courses
 // @desc    Create a new course
-// @access  Private (Only authenticated users)
+// @access  Private (Only instructors)
 router.post(
   "/",
-  auth,
+  authMiddleware,
+  authorizeRoles("instructor"),
   [
     body("title").notEmpty().withMessage("Title is required"),
     body("description").notEmpty().withMessage("Description is required"),
     body("category").notEmpty().withMessage("Category is required"),
     body("youtubeVideoIds").isArray().withMessage("YouTube Video IDs should be an array"),
+    body("content").notEmpty().withMessage("Course content is required")
   ],
   async (req, res) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { title, description, category, youtubeVideoIds } = req.body;
+    const { title, description, category, youtubeVideoIds, content } = req.body;
 
     try {
       const newCourse = new Course({
         title,
         description,
-        instructor: req.user.id,
+        instructor: req.user._id,
         category,
         youtubeVideoIds,
+        content,
+        image: `https://img.youtube.com/vi/${youtubeVideoIds[0]}/0.jpg`
       });
 
       const savedCourse = await newCourse.save();
@@ -72,12 +74,13 @@ router.get("/:id", async (req, res) => {
 // @route   PUT /api/courses/:id
 // @desc    Update a course
 // @access  Private (Only instructor or admin)
-router.put("/:id", auth, async (req, res) => {
+router.put("/:id", authMiddleware, async (req, res) => {
   try {
     let course = await Course.findById(req.params.id);
 
     if (!course) return res.status(404).json({ message: "Course not found" });
-    if (course.instructor.toString() !== req.user.id) {
+
+    if (course.instructor.toString() !== req.user.id && req.user.role !== "admin") {
       return res.status(403).json({ message: "Not authorized" });
     }
 
@@ -92,12 +95,13 @@ router.put("/:id", auth, async (req, res) => {
 // @route   DELETE /api/courses/:id
 // @desc    Delete a course
 // @access  Private (Only instructor or admin)
-router.delete("/:id", auth, async (req, res) => {
+router.delete("/:id", authMiddleware, async (req, res) => {
   try {
     const course = await Course.findById(req.params.id);
 
     if (!course) return res.status(404).json({ message: "Course not found" });
-    if (course.instructor.toString() !== req.user.id) {
+
+    if (course.instructor.toString() !== req.user.id && req.user.role !== "admin") {
       return res.status(403).json({ message: "Not authorized" });
     }
 
