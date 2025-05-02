@@ -8,12 +8,16 @@ const {
   markLessonComplete,
   getCourseProgress,
   getCompletedCourses,
+  checkEnrollment, // Add the new controller function
+  approveEnrollment, // Add the approveEnrollment controller function
 } = require("../controllers/studentController");
+const { isAdmin } = require('../middleware/auth'); // Middleware to check roles
+
 
 const router = express.Router();
 
-// Browse approved courses
-router.get("/courses", authMiddleware, authorizeRoles("student"), getApprovedCourses);
+// Browse approved courses (no authentication required)
+router.get("/courses", getApprovedCourses);
 
 // Enroll in a course
 router.post("/courses/:id/enroll", authMiddleware, authorizeRoles("student"), enrollInCourse);
@@ -42,5 +46,12 @@ router.get(
 
 // Get completed courses
 router.get("/courses/completed", authMiddleware, authorizeRoles("student"), getCompletedCourses);
+
+// Check if a student is enrolled in a course
+router.get("/courses/:id/is-enrolled", authMiddleware, authorizeRoles("student"), checkEnrollment);
+
+// Route to approve enrollment
+router.put('/courses/:courseId/enrollments/:studentId/approve', isAdmin, approveEnrollment);
+
 
 module.exports = router;

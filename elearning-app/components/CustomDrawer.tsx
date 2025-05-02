@@ -7,7 +7,7 @@ import { DrawerContentComponentProps } from "@react-navigation/drawer";
 const CustomDrawer = (props: DrawerContentComponentProps) => {
   return (
     <View style={{ flex: 1 }}>
-      <DrawerContentScrollView {...props} contentContainerStyle={{  }}>
+      <DrawerContentScrollView {...props} contentContainerStyle={{}}>
         <View style={styles.profileContainer}>
           <Image source={require("../assets/images/gmn.png")} style={styles.profileImage} />
           <Text style={styles.profileName}>Gedeon Mubenga</Text>
@@ -52,7 +52,13 @@ const CustomDrawer = (props: DrawerContentComponentProps) => {
           />
         </View>
       </DrawerContentScrollView>
-      <TouchableOpacity style={styles.logoutButton} onPress={() => console.log("Logout Pressed")}>
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={() => {
+          props.navigation.navigate("Home"); // Navigate to Home
+          console.log("Logout Pressed");
+        }}
+      >
         <Ionicons name="log-out-outline" size={22} color="#333" />
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
@@ -64,7 +70,7 @@ const styles = StyleSheet.create({
   profileContainer: {
     alignItems: "center",
     padding: 20,
-    backgroundColor: "#4699b1"
+    backgroundColor: "#4699b1",
   },
   profileImage: {
     width: 170,

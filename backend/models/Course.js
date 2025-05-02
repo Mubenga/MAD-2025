@@ -57,8 +57,8 @@ const CourseSchema = new mongoose.Schema({
   },
   enrolledStudents: [
     {
-      type: mongoose.Schema.Types.ObjectId, // Reference to the User model
-      ref: 'User',
+      student: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Reference to the User model
+      status: { type: String, enum: ['Pending', 'Approved'], default: 'Pending' }, // Enrollment status
     },
   ],
   createdAt: {

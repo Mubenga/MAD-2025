@@ -1,8 +1,10 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { NavigationProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons"; // For the cross icon
 import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage"; // For session management
+import { API_BASE_URL } from "../config/api";
 
 type LoginScreenProps = {
   navigation: NavigationProp<any>;
@@ -26,28 +28,37 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       type LoginResponse = {
         success: boolean;
         token?: string;
+        user?: {
+          id: string;
+          name: string;
+          email: string;
+          role: string; // e.g., "student" or "instructor"
+        };
         message?: string;
       };
 
       const response = await axios.post<LoginResponse>(
-        "http://172.20.28.97:5000/api/auth/login", // FIXED URL
+        `${API_BASE_URL}/auth/login`, // FIXED URL
         { email, password }
       );
 
       if (response.data.success) {
         Alert.alert("Success", "Login successful!");
 
-        // TODO: Save the token for authentication (if provided)
-        // Example: AsyncStorage.setItem('token', response.data.token);
+        // Save the token and user data in AsyncStorage
+        if (response.data.token && response.data.user) {
+          await AsyncStorage.setItem("token", response.data.token);
+          await AsyncStorage.setItem("user", JSON.stringify(response.data.user));
+        }
 
         // Navigate to Home screen
-        navigation.navigate("Main");
+        navigation.navigate("Home", { screen: "Courses" });
       } else {
         Alert.alert("Error", response.data.message || "Invalid email or password.");
       }
     } catch (error: any) {
       console.error("Error during login:", error);
-      
+
       if (error.response) {
         // Handle different response status codes
         if (error.response.status === 401) {
@@ -93,14 +104,18 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
         onPress={handleLogin}
         disabled={loading}
       >
-        <Text style={styles.buttonText}>{loading ? "Logging in..." : "LOGIN"}</Text>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>LOGIN</Text>
+        )}
       </TouchableOpacity>
 
       <Text style={styles.linkText}>
         Don't have an account?{" "}
         <Text
           style={styles.link}
-          onPress={() => navigation.navigate("Register")}
+          onPress={() => navigation.navigate("RegisterScreen")}
         >
           Register Here
         </Text>

@@ -6,6 +6,8 @@ import {
 import { NavigationProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
+import { API_BASE_URL } from "../config/api";
+import { Picker } from "@react-native-picker/picker";
 
 type RegisterResponse = {
   success: boolean;
@@ -27,6 +29,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("student"); // Default role is student
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
@@ -43,6 +46,13 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
       return;
     }
 
+    // ✅ Mobile number validation
+    const mobileRegex = /^[0-9]{10,15}$/;
+    if (!mobileRegex.test(mobile)) {
+      Alert.alert("Error", "Please enter a valid mobile number (10-15 digits).");
+      return;
+    }
+
     // ✅ Password length check
     if (password.length < 6) {
       Alert.alert("Error", "Password must be at least 6 characters long.");
@@ -54,13 +64,13 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
     try {
       // ✅ Make an API request to register the user
       const response = await axios.post<RegisterResponse>(
-        "http://172.20.28.97:5000/api/auth/register",
+        `${API_BASE_URL}/auth/register`, // Updated endpoint for registration
         {
           name,
           email,
           mobile,
           password,
-          role: "user", // Default user role
+          role, // Include the selected role
         },
         {
           headers: { "Content-Type": "application/json" },
@@ -139,6 +149,19 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
         style={styles.input}
       />
 
+      {/* Role Selection */}
+      <View style={styles.pickerContainer}>
+        <Text style={styles.pickerLabel}>Select Role:</Text>
+        <Picker
+          selectedValue={role}
+          onValueChange={(itemValue) => setRole(itemValue)}
+          style={styles.picker}
+        >
+          <Picker.Item label="Student" value="student" />
+          <Picker.Item label="Instructor" value="instructor" />
+        </Picker>
+      </View>
+
       {/* Register Button */}
       <TouchableOpacity
         style={styles.button}
@@ -166,7 +189,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
   );
 }
 
-// 🔹 Styles remain the same
+// 🔹 Styles remain the same with additional styles for the picker
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -195,6 +218,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     backgroundColor: "#fff",
   },
+  pickerContainer: {
+    width: "100%",
+    marginBottom: 15,
+  },
+  pickerLabel: {
+    marginBottom: 5,
+    fontWeight: "bold",
+  },
+  picker: {
+    height: 50,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 5,
+    backgroundColor: "#fff",
+  },
   button: {
     backgroundColor: "#007bff",
     padding: 15,
@@ -215,4 +253,3 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
-

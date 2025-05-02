@@ -1,10 +1,11 @@
 const Course = require("../models/Course");
+const { body, validationResult } = require("express-validator");
+const { authMiddleware, authorizeRoles } = require("../middleware/auth");
 
 // Get all approved courses
-exports.getApprovedCourses = async (req, res) => {
+const getApprovedCourses = async (req, res) => {
   try {
     const courses = await Course.find({ approved: true }).populate("instructor", "name email");
-
     res.status(200).json({
       success: true,
       courses,
@@ -15,11 +16,24 @@ exports.getApprovedCourses = async (req, res) => {
   }
 };
 
-// Enroll in a course
-exports.enrollInCourse = async (req, res) => {
+// Get all courses (temporarily bypassing the 'approved' filter)
+const getAllCourses = async (req, res) => {
   try {
-    const { id } = req.params;
+    const courses = await Course.find().populate("instructor", "name email");
+    res.status(200).json({
+      success: true,
+      courses,
+    });
+  } catch (error) {
+    console.error("Get all courses error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
+// Enroll in a course
+const enrollInCourse = async (req, res) => {
+  try {
+    const { id } = req.params; // Course ID
     const course = await Course.findById(id);
 
     if (!course) {
@@ -30,16 +44,20 @@ exports.enrollInCourse = async (req, res) => {
       return res.status(400).json({ message: "Course is not approved for enrollment" });
     }
 
-    if (course.enrolledStudents.includes(req.user.id)) {
+    const isAlreadyEnrolled = course.enrolledStudents.some(
+      (student) => student.student.toString() === req.user.id
+    );
+
+    if (isAlreadyEnrolled) {
       return res.status(400).json({ message: "You are already enrolled in this course" });
     }
 
-    course.enrolledStudents.push(req.user.id);
+    course.enrolledStudents.push({ student: req.user.id, status: "Pending" });
     await course.save();
 
     res.status(200).json({
       success: true,
-      message: "Successfully enrolled in the course",
+      message: "Successfully enrolled in the course. Status: Pending",
       course,
     });
   } catch (error) {
@@ -49,16 +67,29 @@ exports.enrollInCourse = async (req, res) => {
 };
 
 // Get all enrolled courses
-exports.getEnrolledCourses = async (req, res) => {
+const getEnrolledCourses = async (req, res) => {
   try {
-    const courses = await Course.find({ enrolledStudents: req.user.id }).populate(
-      "instructor",
-      "name email"
-    );
+    const courses = await Course.find({
+      "enrolledStudents.student": req.user.id,
+    }).populate("instructor", "name email");
+
+    const enrolledCourses = courses.map((course) => {
+      const enrollment = course.enrolledStudents.find(
+        (student) => student.student.toString() === req.user.id
+      );
+      return {
+        id: course._id,
+        title: course.title,
+        instructor: course.instructor.name,
+        category: course.category,
+        price: course.price,
+        status: enrollment.status,
+      };
+    });
 
     res.status(200).json({
       success: true,
-      courses,
+      courses: enrolledCourses,
     });
   } catch (error) {
     console.error("Get enrolled courses error:", error);
@@ -67,23 +98,25 @@ exports.getEnrolledCourses = async (req, res) => {
 };
 
 // Access course materials
-exports.getCourseMaterials = async (req, res) => {
+const getCourseMaterials = async (req, res) => {
   try {
     const { id } = req.params;
-
     const course = await Course.findById(id);
 
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
     }
 
-    if (!course.enrolledStudents.includes(req.user.id)) {
+    const isEnrolled = course.enrolledStudents.some(
+      (student) => student.student.toString() === req.user.id
+    );
+    if (!isEnrolled) {
       return res.status(403).json({ message: "Access denied: You are not enrolled in this course" });
     }
 
     res.status(200).json({
       success: true,
-      materials: course.content, // Return course materials
+      materials: course.content,
     });
   } catch (error) {
     console.error("Get course materials error:", error);
@@ -92,7 +125,7 @@ exports.getCourseMaterials = async (req, res) => {
 };
 
 // Mark a lesson as complete
-exports.markLessonComplete = async (req, res) => {
+const markLessonComplete = async (req, res) => {
   try {
     const { courseId, lessonId } = req.params;
 
@@ -103,17 +136,19 @@ exports.markLessonComplete = async (req, res) => {
     }
 
     const studentProgress = course.enrolledStudents.find(
-      (enrollment) => enrollment.toString() === req.user.id
+      (enrollment) => enrollment.student.toString() === req.user.id
     );
 
     if (!studentProgress) {
       return res.status(403).json({ message: "You are not enrolled in this course" });
     }
 
-    // Mark the lesson as complete
+    if (!studentProgress.progress) {
+      studentProgress.progress = new Map();
+    }
+
     studentProgress.progress.set(lessonId, true);
 
-    // Check if all lessons are complete
     const allLessonsCompleted = course.youtubeVideoIds.every((videoId) =>
       studentProgress.progress.get(videoId)
     );
@@ -136,7 +171,7 @@ exports.markLessonComplete = async (req, res) => {
 };
 
 // Get progress for a course
-exports.getCourseProgress = async (req, res) => {
+const getCourseProgress = async (req, res) => {
   try {
     const { courseId } = req.params;
 
@@ -147,7 +182,7 @@ exports.getCourseProgress = async (req, res) => {
     }
 
     const studentProgress = course.enrolledStudents.find(
-      (enrollment) => enrollment.toString() === req.user.id
+      (enrollment) => enrollment.student.toString() === req.user.id
     );
 
     if (!studentProgress) {
@@ -165,7 +200,7 @@ exports.getCourseProgress = async (req, res) => {
 };
 
 // Get completed courses
-exports.getCompletedCourses = async (req, res) => {
+const getCompletedCourses = async (req, res) => {
   try {
     const courses = await Course.find({
       "completedStudents.student": req.user.id,
@@ -185,4 +220,75 @@ exports.getCompletedCourses = async (req, res) => {
     console.error("Get completed courses error:", error);
     res.status(500).json({ message: "Server error" });
   }
+};
+
+// Check if a student is enrolled in a course
+const checkEnrollment = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const course = await Course.findById(id);
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    const isEnrolled = course.enrolledStudents.some(
+      (student) => student.student.toString() === req.user.id
+    );
+
+    res.status(200).json({
+      success: true,
+      enrolled: isEnrolled,
+    });
+  } catch (error) {
+    console.error("Check enrollment error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Approve a student's enrollment in a course
+const approveEnrollment = async (req, res) => {
+  try {
+    const { courseId, studentId } = req.params;
+
+    const course = await Course.findById(courseId);
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    const enrollment = course.enrolledStudents.find(
+      (student) => student.student.toString() === studentId
+    );
+
+    if (!enrollment) {
+      return res.status(404).json({ message: "Enrollment not found" });
+    }
+
+    enrollment.status = "Approved";
+    await course.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Enrollment approved successfully",
+    });
+  } catch (error) {
+    console.error("Approve enrollment error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Export all controller functions
+module.exports = {
+  getApprovedCourses,
+  getAllCourses,
+  enrollInCourse,
+  getEnrolledCourses,
+  getCourseMaterials,
+  markLessonComplete,
+  getCourseProgress,
+  getCompletedCourses,
+  checkEnrollment,
+  approveEnrollment,
 };

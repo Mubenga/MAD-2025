@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from './types'; // Adjust the path based on your project structure
+import { API_BASE_URL } from "../config/api";
 
 type ProfileScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ProfileScreen'>;
 
@@ -66,7 +67,7 @@ const ProfileScreen = ({ navigation }: { navigation: ProfileScreenNavigationProp
 
     const fetchUserData = async () => {
       try {
-        const response = await axios.get<UserData>('http://172.20.28.97:5000/api/auth/user', {
+        const response = await axios.get<UserData>(`${API_BASE_URL}/auth/login`, {
           headers: { 'x-auth-token': token }
         });
 

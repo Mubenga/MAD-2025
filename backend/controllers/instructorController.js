@@ -3,17 +3,20 @@ const Course = require("../models/Course");
 // Create a course
 exports.createCourse = async (req, res) => {
   try {
-    const { title, description, content } = req.body;
+    const { title, description, content, category, price, youtubeVideoIds } = req.body;
 
-    if (!title || !description || !content) {
-      return res.status(400).json({ message: "All fields are required" });
+    if (!title || !description || !content || !category) {
+      return res.status(400).json({ message: "All required fields must be filled." });
     }
 
     const course = await Course.create({
       title,
       description,
       content,
-      instructor: req.user.id, // Associate the course with the logged-in instructor
+      category,
+      price,
+      youtubeVideoIds,
+      instructor: req.user.id,
     });
 
     res.status(201).json({
@@ -26,6 +29,7 @@ exports.createCourse = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // Update a course
 exports.updateCourse = async (req, res) => {
@@ -88,6 +92,37 @@ exports.getMyCourses = async (req, res) => {
     });
   } catch (error) {
     console.error("Get my courses error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.approveEnrollment = async (req, res) => {
+  try {
+    const { courseId, studentId } = req.params;
+
+    const course = await Course.findById(courseId);
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    const enrollment = course.enrolledStudents.find(
+      (student) => student.student.toString() === studentId
+    );
+
+    if (!enrollment) {
+      return res.status(404).json({ message: "Enrollment not found" });
+    }
+
+    enrollment.status = "Approved"; // Update the status to Approved
+    await course.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Enrollment approved successfully",
+    });
+  } catch (error) {
+    console.error("Approve enrollment error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

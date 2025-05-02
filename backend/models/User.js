@@ -39,6 +39,7 @@ const UserSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Password comparison
+// ⚠️ Reminder: This is a plain text comparison. Implement hashing later for security.
 UserSchema.methods.checkPassword = async function(candidatePassword) {
   return candidatePassword === this.password;
 };
